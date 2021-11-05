@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Name=Logs Watcher
+GenericName=Logs Watcher
+Comment=Monitor updates to log files
+Exec=logswatcher
+TryExec=logswatcher
+Icon=/usr/share/pixmaps/logswatcher.svg
+Terminal=true
+Type=Application
+Categories=system-logs

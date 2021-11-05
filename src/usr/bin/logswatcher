@@ -1,0 +1,157 @@
+#! /bin/bash
+# Copyright w00fpack
+
+LOGFILE=${1:-/var/log/messages}
+NGINX=${1:-/var/log/nginx/access.log}
+NGINX2=${1:-/var/log/nginx/error.log}
+CUPS=${1:-/var/log/cups/error_log}
+FFSERVER=${1:-/var/log/ffserver.log}
+TOR=${1:-/var/log/tor/notices.log}
+
+PARSER='{ \
+	font=""; \
+	color="#FFFFFF"}; \
+	/kernel/ {font="italic"}; \
+	/warn/ {color="#FFF4B8"}; \
+	/error/ {color="#FFD0D8"}; \
+	OFS="\n" {print $1 " " $2, $3, $4, $5, $6, substr($0,index($0,$7)), font, color; \
+	fflush()
+}'
+
+PARSER_TOR='{ \
+	font=""; \
+	color="#FFFFFF"}; \
+	/kernel/ {font="italic"}; \
+	/warn/ {color="#FFF4B8"}; \
+	/error/ {color="#FFD0D8"}; \
+	OFS="\n" {print $1 " " $2, $3, $4, substr($0,index($0, $5)), font, color; \
+	fflush()
+}'
+
+PARSER_FFSERVER='{ \
+	font=""; \
+	color="#FFFFFF"}; \
+	/kernel/ {font="italic"}; \
+	/warn/ {color="#FFF4B8"}; \
+	/error/ {color="#FFD0D8"}; \
+	OFS="\n" {print $1 " " $2 "/" $3 "/" $5 " " $4, substr($0,index($0, $6)), font, color; \
+	fflush()
+}'
+
+
+PARSER_NGINX='{ \
+	font=""; \
+	color="#FFFFFF"}; \
+	/kernel/ {font="italic"}; \
+	/emerg/ {color="#FF9C98";font="italic"}; \
+	/warn/ {color="#FFF4B8"}; \
+	/error/ {color="#FFD0D8"}; \
+	OFS="\n" {print $1, $3, $4 " " $5, $6, $7, $8, $9, $10, $11, substr($0,index($0, $12)), font, color; \
+	fflush()
+}'
+
+PARSER_NGINX_ERROR='{ \
+	font=""; \
+	color="#FFFFFF"}; \
+	/emerg/ {color="#FF9C98";font="italic"}; \
+	/warn/ {color="#FFF4B8"}; \
+	/error/ {color="#FFD0D8"}; \
+	OFS="\n" {print $1, $2, $3, $4, substr($0,index($0,$5)), font, color; \
+	fflush()
+}'
+
+PARSER_CUPS='{ \
+	font=""; \
+	color="#FFFFFF"}; \
+	/^I/ {font="italic"}; \
+	/^W/ {color="#FFF4B8"}; \
+	/^E/ {color="#FFD0D8"}; \
+	OFS="\n" {print $1, $2 " " $3, substr($0,index($0, $4)), font, color; \
+	fflush()
+}'
+
+
+app_key=$(($RANDOM * $$))
+
+tail -f -n 100 $LOGFILE | awk "$PARSER" | \
+	yad --plug="$app_key" --tabnum=1 \
+		--list --tail --text="Content of $LOGFILE" \
+		--column Date \
+		--column Time \
+		--column Tag \
+		--column Module \
+		--column type \
+		--column Message:TIP \
+		--column @font@ \
+		--column @back@ &
+
+tail -f -n 100 $NGINX | awk "$PARSER_NGINX" | \
+	yad --plug="$app_key" --tabnum=2 \
+		--list --tail --text="Content of $NGINX" \
+		--column IP \
+		--column User \
+		--column Date \
+		--column Method \
+		--column URL \
+		--column Protocol \
+		--column Result \
+		--column Bytes \
+		--column Referrer \
+		--column Agent \
+		--column @font@ \
+		--column @back@ &
+
+tail -f -n 100 $NGINX2 | awk "$PARSER_NGINX_ERROR" | \
+	yad --plug="$app_key" --tabnum=3 \
+		--list --tail --text="Content of $NGINX2" \
+		--column Date \
+		--column Time \
+		--column Type \
+		--column Code \
+		--column Description \
+		--column @font@ \
+		--column @back@ &
+
+tail -f -n 100 $FFSERVER | awk "$PARSER_FFSERVER" | \
+	yad --plug="$app_key" --tabnum=4 \
+		--list --tail --text="Content of $FFSERVER" \
+		--column Date \
+		--column Description \
+		--column @font@ \
+		--column @back@ &
+
+tail -f -n 100 $TOR | awk "$PARSER_TOR" | \
+	yad --plug="$app_key" --tabnum=5 \
+		--list --tail --text="Content of $TOR" \
+		--column Date \
+		--column Time \
+		--column Type \
+		--column Description \
+		--column @font@ \
+		--column @back@ &
+
+tail -f -n 100 $CUPS | awk "$PARSER_CUPS" | \
+	yad --plug="$app_key" --tabnum=6 \
+		--list --tail --text="Content of $CUPS" \
+		--column Code \
+		--column Date \
+		--column Message \
+		--column @font@ \
+		--column @back@ &
+
+yad --notebook --key="$app_key" --title="Log" --window-icon=logviewer --center --width=1000 --height=600 \
+	--tab="Messages" \
+	--tab="Nginx" \
+	--tab="Nginx Error" \
+	--tab="FFServer" \
+	--tab="Tor" \
+	--tab="Printer" \
+	--no-buttons
+
+ret=$?
+	[[ $ret -eq 1 ]] && exit
+
+exit 1
+
+exit
+#exit $?
